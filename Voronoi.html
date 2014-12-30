@@ -1,0 +1,122 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <style type="text/css">
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="it" width="500" height="500"></canvas>
+    <script>
+        function distance(point1, point2) {
+            return Math.sqrt(Math.pow(point2.x - point1.x, 2) + Math.pow(point2.y - point1.y, 2));
+        }
+
+        var colors = [
+            {
+                red: 255,
+                green: 0,
+                blue: 0
+            }, {
+                red: 0,
+                green: 255,
+                blue: 0
+            }, {
+                red: 0,
+                green: 0,
+                blue: 255
+            }, {
+                red: 255,
+                green: 165,
+                blue: 0
+            }, {
+                red: 255,
+                green: 255,
+                blue: 0
+            }, {
+                red: 204,
+                green: 204,
+                blue: 204
+            }, {
+                red: 102,
+                green: 51,
+                blue: 153
+            }
+        ];
+        var currentColor = 0;
+        var canvas = document.getElementById('it');
+        var ctx = canvas.getContext('2d');
+
+        var points = [
+            { x: canvas.width / 2, y: canvas.height / 2, color: colors[colors.length - 1] }
+        ];
+
+        function drawIt() {
+            var imageInfo = ctx.createImageData(canvas.width, canvas.height);
+
+            for (var i = 0; i < canvas.width; i++) {
+                for (var j = 0; j < canvas.height; j++) {
+                    var minDist = 10000;
+                    var minPoint = -1;
+                    for (var k = 0; k < points.length; k++) {
+                        var point = points[k];
+                        var dist = distance(point, { x: i, y: j });
+                        if (dist < minDist) {
+                            minDist = dist;
+                            minPoint = k;
+                        }
+                    }
+                    if (minPoint < 0) {
+                        console.log('hmmm');
+                    }
+
+                    var closePoint = points[minPoint];
+
+                    if (closePoint == undefined) {
+                        console.log('hmm2');
+                    }
+
+                    var pixelIdx = (canvas.width * j + i) * 4;
+                    imageInfo.data[pixelIdx + 0] = closePoint.color.red;
+                    imageInfo.data[pixelIdx + 1] = closePoint.color.green;
+                    imageInfo.data[pixelIdx + 2] = closePoint.color.blue;
+                    imageInfo.data[pixelIdx + 3] = 255; // alpha
+                }
+            }
+
+            ctx.putImageData(imageInfo, 0, 0);
+
+            for (var i = 0; i < points.length; i++) {
+                var radius = 2;
+
+                ctx.beginPath();
+                ctx.arc(points[i].x, points[i].y, radius, 0, 2 * Math.PI, false);
+                ctx.fillStyle = 'black';
+                ctx.fill();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'black';
+                ctx.stroke();
+            }
+        }
+
+        //http://stackoverflow.com/questions/6300791/handling-onclick-event-for-canvas-in-javascript-and-getting-its-coordinates
+        canvas.onclick = function (event) {
+            event = event || window.event;
+
+            var x = event.pageX - canvas.offsetLeft,
+                y = event.pageY - canvas.offsetTop;
+
+            points.push({ x: x, y: y, color: colors[currentColor++] });
+            currentColor %= colors.length;
+
+            drawIt();
+        }
+
+        drawIt();
+    </script>
+</body>
+</html>
