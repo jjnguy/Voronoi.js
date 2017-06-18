@@ -4,16 +4,103 @@
     <meta charset="utf-8" />
     <title></title>
     <style type="text/css">
+    /*https://developers.google.com/maps/documentation/javascript/examples/polygon-simple*/
         canvas {
             border: 1px solid black;
         }
+
+        #map {
+            height: 750px;
+        }
+
     </style>
 </head>
 <body>
+    <div id="map" width="500" height="500"></div>
     <canvas id="it" width="500" height="500"></canvas>
+    <script src="rhill-voronoi-core.js"></script>
     <script>
+    
+    let breweries = [
+        { lat: 44.973311, lng: -93.209611, title: 'surley' },
+        { lat: 44.950900, lng: -93.093534, title: 'tin whiskers' },
+        { lat: 44.903825, lng: -93.465933, title: 'unmapped' },
+        { lat: 44.934244, lng: -93.232394, title: 'northbound' },
+        { lat: 44.975196, lng: -93.253034, title: 'day block' },
+        { lat: 45.000815, lng: -93.244768, title: 'bauhaus' },
+        { lat: 45.003364, lng: -93.251549, title: 'indeed' },
+        { lat: 44.984963, lng: -93.279215, title: 'fulton' },
+        { lat: 45.126583, lng: -93.425483, title: 'omni' },
+        { lat: 44.944948, lng: -93.234519, title: 'du nord' },
+        { lat: 44.941430, lng: -93.341338, title: 'steel toe' },
+    ];
 
-        var regularDistance = true;
+    function initMap() {
+        var map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 12,
+          center: {lat: 44.962167, lng: -93.197659},
+        });
+
+        let breweryMarkers = breweries.map(coord => new google.maps.Marker({
+            position: coord,
+            map: map,
+            title: coord.title,
+        }));
+
+        let sites = breweries.map(brew => ({ y: brew.lat, x: brew.lng }));
+        let boundingBox = {
+            xl:Math.min(...sites.map(site => site.x)) - .01, 
+            xr:Math.max(...sites.map(site => site.x)) + .01, 
+            yt:Math.max(...sites.map(site => site.y)) + .01, 
+            yb:Math.min(...sites.map(site => site.y)) - .01
+        };
+
+        let boundingMarkers = [ 
+            { lng: boundingBox.xl, lat: boundingBox.yt },
+            { lng: boundingBox.xl, lat: boundingBox.yb },
+            { lng: boundingBox.xr, lat: boundingBox.yb },
+            { lng: boundingBox.xr, lat: boundingBox.yt },
+         ].map(coord => new google.maps.Marker({
+            position: coord,
+            map: map,
+        }));
+
+        let voronoi = new Voronoi(); 
+
+        let results = voronoi.compute(sites, boundingBox);
+
+        let vertexPoints = results.vertices.map(cord => new google.maps.Marker({
+            position: { lng: cord.x, lat: cord.y },
+            map: map,
+            label: 'v',
+        }));
+
+        results.cells.forEach(cell => {
+            if (cell.halfedges.length == 0) return;
+
+            var vertices = cell.halfedges
+                .map(edg => [edg.getStartpoint(), edg.getEndpoint()])
+                .reduce((a, b) => a.concat(b))
+                .map(cord => ({ lng: cord.x, lat: cord.y }));
+
+            // Construct the polygon.
+            var bermudaTriangle = new google.maps.Polygon({
+            paths: vertices,
+            strokeColor: '#FF0000',
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: '#FF0000',
+            fillOpacity: 0.35
+            });
+            bermudaTriangle.setMap(map);
+        });
+      }
+
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBElNkAVD1ewXVHgk31dm02uVniqJUm8A0&callback=initMap">
+    </script>
+    <script>
 
         function distance(point1, point2) {
             if (false) {
@@ -112,6 +199,14 @@
             }
         }
 
+        function addPoint(point) {
+            point.color = colors[currentColor++]
+            currentColor %= colors.length;
+            points.push(point);
+
+            drawIt();
+        }
+
         //http://stackoverflow.com/questions/6300791/handling-onclick-event-for-canvas-in-javascript-and-getting-its-coordinates
         canvas.onclick = function (event) {
             event = event || window.event;
@@ -119,10 +214,7 @@
             var x = event.pageX - canvas.offsetLeft,
                 y = event.pageY - canvas.offsetTop;
 
-            points.push({ x: x, y: y, color: colors[currentColor++] });
-            currentColor %= colors.length;
-
-            drawIt();
+            addPoint({ x, y })
         }
 
         drawIt();
